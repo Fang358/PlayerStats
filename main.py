@@ -60,6 +60,9 @@ def add_to_dict(url, df_dict, id, tourn):
         df_dict['FK'].append(both_stats[9])
         df_dict['FD'].append(both_stats[10])
         df_dict['FK+/-'].append(both_stats[11])
+        
+        print(f"{map} {agent} - {both_stats[2]}/{both_stats[3]}/{both_stats[4]}")
+        
     except:
       print(f"Error on {url} going to next")
 
@@ -71,47 +74,50 @@ def dfs_tabs(df_list, sheet_list, file_name):
         dataframe.to_excel(writer, sheet_name=sheet, startrow=0 , startcol=0)
     writer.close()
 
-url = "https://www.vlr.gg/player/matches/604/boostio/?page=1"
-result = requests.get(url)
-id = 3063
-soup = BeautifulSoup(result.content, features="html5lib") 
+id = int(input("Please enter a player id: "))
 games = {}
 tourns = []
-for a in soup.find('div', {'class' : 'mod-dark'}).find_all("a"):
-  #This bit is "only a little bit" scuffed 
-  text = a.find('div', {'class' : 'text-of'}).get_text()
-  j = 0
-  q = False
-  r = ""
-  for i, chr in enumerate(list(text)):
-    if chr != "\t" and chr != "\n":
-      q = True
-      r += chr
-    elif q:
-      break
-  
-  q1 = False
-  r1 = ""
-  for i, chr in enumerate(list(a.find('div', {'class' : 'm-item-date'}).get_text())):
-    if chr != "\t" and chr != "\n":
-      q1 = True
-      r1 += chr
-    elif q1:
-      break
+
+for page in range(int(input("How many pages do you want to do: "))):
     
-  r1 = datetime.strptime(r1, '%Y/%m/%d')    
-  
-  if r not in tourns:
-      tourns.append(r)
-  games["https://www.vlr.gg" + a['href']] = [r, r1]
-  
+    url = f"https://www.vlr.gg/player/matches/{id}/fang358/?page={page+1}"
+    result = requests.get(url)
+    soup = BeautifulSoup(result.content, features="html5lib") 
+    
+    for a in soup.find('div', {'class' : 'mod-dark'}).find_all("a"):
+        #This bit is "only a little bit" scuffed 
+        text = a.find('div', {'class' : 'text-of'}).get_text()
+        j = 0
+        q = False
+        r = ""
+        for i, chr in enumerate(list(text)):
+            if chr != "\t" and chr != "\n":
+                q = True
+                r += chr
+            elif q:
+                break
+        
+        q1 = False
+        r1 = ""
+        for i, chr in enumerate(list(a.find('div', {'class' : 'm-item-date'}).get_text())):
+            if chr != "\t" and chr != "\n":
+                q1 = True
+                r1 += chr
+            elif q1:
+                break
+            
+        r1 = datetime.strptime(r1, '%Y/%m/%d')    
+        
+        if r not in tourns:
+            tourns.append(r)
+        games["https://www.vlr.gg" + a['href']] = [r, r1]
 
 def main():
     ok_tourns = []
     for i, variable in enumerate(variable_names):
         if variable_list[i].get() == 1:
             ok_tourns.append(variable)
-            
+                        
     date = datetime.strptime(cal.get_date(), "%m/%d/%y")
     
     top.destroy()
@@ -146,7 +152,7 @@ def main():
         
         df_dict = add_to_dict(game, df_dict, id, games[game][0])
 
-        dfs_tabs([pd.DataFrame(df_dict)], ["Main"], "Testing1.xlsx")
+        dfs_tabs([pd.DataFrame(df_dict)], ["Main"], "Testing2.xlsx")
 
             
 top = Tk()
