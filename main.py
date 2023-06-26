@@ -6,7 +6,7 @@ from tkinter import *
 from tkcalendar import Calendar
 from datetime import datetime
  
-def add_to_dict(url, df_dict, id, tourn, agents):
+def add_to_dict(url, df_dict, id, tourn, agents, maps):
   result = requests.get(url)
   soup = BeautifulSoup(result.content, features="html5lib") 
   games = soup.find('div', {'class' : "vm-stats"}).find_all('div', {'class' : 'vm-stats-game'})
@@ -92,12 +92,47 @@ def add_to_dict(url, df_dict, id, tourn, agents):
         agents[agent]["FK"] += (both_stats[9])
         agents[agent]["FD"] += (both_stats[10])
         
+        if map not in maps.keys():
+            maps[map] = {
+                "Maps" : 0,
+                "Rounds" : 0,
+                "Rounds Won" : 0,
+                "Kills" : 0,
+                "Deaths" : 0,
+                "Assists" : 0,
+                "KAST" : [],
+                "ADR" : [],
+                "HS" : [],
+                "Rating" : [],
+                "ACS" : [],
+                "FK" : 0,
+                "FD" : 0,
+                "Maps Won" : 0
+            }
+        
+        maps[map]["Maps Won"] += 1 if score > enemy_score else 0
+        maps[map]["Maps"] += 1
+        maps[map]["Rounds"] += score + enemy_score
+        maps[map]["Rounds Won"] += score
+        maps[map]["Kills"] += both_stats[2]
+        maps[map]["Deaths"] += both_stats[3]
+        maps[map]["Assists"] += both_stats[4]
+        maps[map]["KAST"].append(both_stats[6])
+        maps[map]["ACS"].append(both_stats[1])
+        maps[map]["ADR"].append(both_stats[7])
+        maps[map]["HS"].append(both_stats[8])
+        maps[map]["Rating"].append(both_stats[0])
+        maps[map]["FK"] += (both_stats[9])
+        maps[map]["FD"] += (both_stats[10])
+        
         print(f"{map} {agent} - {int(both_stats[2])}/{int(both_stats[3])}/{int(both_stats[4])}")
         
     except Exception as e:
+      print(e)
+      a = b
       print(f"Error on {url} going to next")
 
-  return df_dict, agents
+  return df_dict, agents, maps
 
 def dfs_tabs(df_list, sheet_list, file_name):
     writer = pd.ExcelWriter(file_name,engine='xlsxwriter')
@@ -154,6 +189,8 @@ def main():
     top.destroy()
     
     agents = {}
+    
+    maps = {}
             
     df_dict = {
     'Tournament' : [], 
@@ -172,6 +209,7 @@ def main():
     'FK' : [],
     'FD' : [],
     }
+    
 
     for game in games:
         if games[game][0] not in ok_tourns:
@@ -179,9 +217,8 @@ def main():
         
         if games[game][1] < date:
             continue
-        
-        
-        df_dict, agents = add_to_dict(game, df_dict, id, games[game][0], agents)
+                
+        df_dict, agents, maps = add_to_dict(game, df_dict, id, games[game][0], agents, maps)
         
     agent_dict = {
         "Agent" : [],
@@ -218,8 +255,43 @@ def main():
         agent_dict["Rounds"].append(agents[agent]["Rounds"])
         agent_dict["Rounds Won"].append(agents[agent]["Rounds Won"])
         
+    maps_dict = {
+        "Map Name" : [],
+        "Rating" : [],
+        "ACS" : [],
+        "Kills" : [],
+        "Deaths" : [],
+        "Assists" : [],
+        "KAST" : [],
+        "ADR" : [],
+        "HS" : [],
+        "FK" : [],
+        "FD" : [],
+        "Maps" : [],
+        "Maps Won" : [],
+        "Rounds" : [],
+        "Rounds Won" : []
+    }
+    
+    for map in maps:
+        maps_dict["Map Name"].append(map)
+        maps_dict["Rating"].append(sum(maps[map]["Rating"]) / len(maps[map]["Rating"]))
+        maps_dict["ACS"].append(sum(maps[map]["ACS"]) / len(maps[map]["ACS"]))
+        maps_dict["Kills"].append(maps[map]["Kills"])
+        maps_dict["Deaths"].append(maps[map]["Deaths"])
+        maps_dict["Assists"].append(maps[map]["Assists"])
+        maps_dict["KAST"].append(sum(maps[map]["KAST"]) / len(maps[map]["KAST"]))
+        maps_dict["ADR"].append(sum(maps[map]["ADR"]) / len(maps[map]["ADR"]))
+        maps_dict["HS"].append(sum(maps[map]["HS"]) / len(maps[map]["HS"]))
+        maps_dict["FK"].append(maps[map]["FK"])
+        maps_dict["FD"].append(maps[map]["FD"])
+        maps_dict["Maps"].append(maps[map]["Maps"])
+        maps_dict["Maps Won"].append(maps[map]["Maps Won"])
+        maps_dict["Rounds"].append(maps[map]["Rounds"])
+        maps_dict["Rounds Won"].append(maps[map]["Rounds Won"])
+                
     file_name = input("File Name: ")
-    dfs_tabs([pd.DataFrame(df_dict), pd.DataFrame(agent_dict)], ["Main", "Agents"], f"{file_name}.xlsx")
+    dfs_tabs([pd.DataFrame(df_dict), pd.DataFrame(agent_dict), pd.DataFrame(maps_dict)], ["Main", "Agents", "Maps"], f"{file_name}.xlsx")
 
             
 top = Tk()
