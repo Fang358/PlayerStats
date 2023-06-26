@@ -6,7 +6,7 @@ from tkinter import *
 from tkcalendar import Calendar
 from datetime import datetime
  
-def add_to_dict(url, df_dict, id, tourn):
+def add_to_dict(url, df_dict, id, tourn, agents):
   result = requests.get(url)
   soup = BeautifulSoup(result.content, features="html5lib") 
   games = soup.find('div', {'class' : "vm-stats"}).find_all('div', {'class' : 'vm-stats-game'})
@@ -40,7 +40,7 @@ def add_to_dict(url, df_dict, id, tourn):
         for stat in player.find_all('td')[2:]:
           stat_value = (stat.find('span', {'class' : 'mod-both'}).get_text())
 
-          stat_value = stat_value[:-1] if stat_value.count("%") > 0 else stat_value
+          stat_value = int(stat_value[:-1]) / 100 if stat_value.count("%") > 0 else stat_value
           both_stats.append(float(stat_value))
 
         df_dict['Tournament'].append(tourn)
@@ -53,20 +53,51 @@ def add_to_dict(url, df_dict, id, tourn):
         df_dict['Kills'].append(both_stats[2])
         df_dict['Deaths'].append(both_stats[3])
         df_dict['Assists'].append(both_stats[4])
-        df_dict['K+/-'].append(both_stats[5])
         df_dict['KAST'].append(both_stats[6])
         df_dict['ADR'].append(both_stats[7])
         df_dict['HS'].append(both_stats[8])
         df_dict['FK'].append(both_stats[9])
         df_dict['FD'].append(both_stats[10])
-        df_dict['FK+/-'].append(both_stats[11])
         
-        print(f"{map} {agent} - {both_stats[2]}/{both_stats[3]}/{both_stats[4]}")
+        if agent not in agents.keys():
+            agents[agent] = {
+                "Maps" : 0,
+                "Rounds" : 0,
+                "Rounds Won" : 0,
+                "Kills" : 0,
+                "Deaths" : 0,
+                "Assists" : 0,
+                "KAST" : [],
+                "ADR" : [],
+                "HS" : [],
+                "Rating" : [],
+                "ACS" : [],
+                "FK" : 0,
+                "FD" : 0,
+                "Maps Won" : 0
+            }
         
-    except:
+        agents[agent]["Maps Won"] += 1 if score > enemy_score else 0
+        agents[agent]["Maps"] += 1
+        agents[agent]["Rounds"] += score + enemy_score
+        agents[agent]["Rounds Won"] += score
+        agents[agent]["Kills"] += both_stats[2]
+        agents[agent]["Deaths"] += both_stats[3]
+        agents[agent]["Assists"] += both_stats[4]
+        agents[agent]["KAST"].append(both_stats[6])
+        agents[agent]["ACS"].append(both_stats[1])
+        agents[agent]["ADR"].append(both_stats[7])
+        agents[agent]["HS"].append(both_stats[8])
+        agents[agent]["Rating"].append(both_stats[0])
+        agents[agent]["FK"] += (both_stats[9])
+        agents[agent]["FD"] += (both_stats[10])
+        
+        print(f"{map} {agent} - {int(both_stats[2])}/{int(both_stats[3])}/{int(both_stats[4])}")
+        
+    except Exception as e:
       print(f"Error on {url} going to next")
 
-  return df_dict
+  return df_dict, agents
 
 def dfs_tabs(df_list, sheet_list, file_name):
     writer = pd.ExcelWriter(file_name,engine='xlsxwriter')
@@ -121,6 +152,8 @@ def main():
     date = datetime.strptime(cal.get_date(), "%m/%d/%y")
     
     top.destroy()
+    
+    agents = {}
             
     df_dict = {
     'Tournament' : [], 
@@ -133,13 +166,11 @@ def main():
     "Kills" : [],
     'Deaths' : [],
     'Assists' : [],
-    'K+/-' : [],
     'KAST' : [],
     'ADR' : [],
     'HS' : [],
     'FK' : [],
     'FD' : [],
-    'FK+/-' : []
     }
 
     for game in games:
@@ -150,9 +181,45 @@ def main():
             continue
         
         
-        df_dict = add_to_dict(game, df_dict, id, games[game][0])
-
-        dfs_tabs([pd.DataFrame(df_dict)], ["Main"], "Testing2.xlsx")
+        df_dict, agents = add_to_dict(game, df_dict, id, games[game][0], agents)
+        
+    agent_dict = {
+        "Agent" : [],
+        "Rating" : [],
+        "ACS" : [],
+        "Kills" : [],
+        "Deaths" : [],
+        "Assists" : [],
+        "KAST" : [],
+        "ADR" : [],
+        "HS" : [],
+        "FK" : [],
+        "FD" : [],
+        "Maps" : [],
+        "Maps Won" : [],
+        "Rounds" : [],
+        "Rounds Won" : []
+    }
+    
+    for agent in agents:
+        agent_dict["Agent"].append(agent)
+        agent_dict["Rating"].append(sum(agents[agent]["Rating"]) / len(agents[agent]["Rating"]))
+        agent_dict["ACS"].append(sum(agents[agent]["ACS"]) / len(agents[agent]["ACS"]))
+        agent_dict["Kills"].append(agents[agent]["Kills"])
+        agent_dict["Deaths"].append(agents[agent]["Deaths"])
+        agent_dict["Assists"].append(agents[agent]["Assists"])
+        agent_dict["KAST"].append(sum(agents[agent]["KAST"]) / len(agents[agent]["KAST"]))
+        agent_dict["ADR"].append(sum(agents[agent]["ADR"]) / len(agents[agent]["ADR"]))
+        agent_dict["HS"].append(sum(agents[agent]["HS"]) / len(agents[agent]["HS"]))
+        agent_dict["FK"].append(agents[agent]["FK"])
+        agent_dict["FD"].append(agents[agent]["FD"])
+        agent_dict["Maps"].append(agents[agent]["Maps"])
+        agent_dict["Maps Won"].append(agents[agent]["Maps Won"])
+        agent_dict["Rounds"].append(agents[agent]["Rounds"])
+        agent_dict["Rounds Won"].append(agents[agent]["Rounds Won"])
+        
+    file_name = input("File Name: ")
+    dfs_tabs([pd.DataFrame(df_dict), pd.DataFrame(agent_dict)], ["Main", "Agents"], f"{file_name}.xlsx")
 
             
 top = Tk()
