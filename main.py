@@ -2,10 +2,13 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import xlsxwriter
-
+from tkinter import *
+from tkcalendar import Calendar
+from datetime import datetime
+ 
 def add_to_dict(url, df_dict, id, tourn):
   result = requests.get(url)
-  soup = BeautifulSoup(result.content) 
+  soup = BeautifulSoup(result.content, features="html5lib") 
   games = soup.find('div', {'class' : "vm-stats"}).find_all('div', {'class' : 'vm-stats-game'})
   for game in games:
     try:
@@ -66,46 +69,99 @@ def dfs_tabs(df_list, sheet_list, file_name):
     writer = pd.ExcelWriter(file_name,engine='xlsxwriter')
     for dataframe, sheet in zip(df_list, sheet_list):
         dataframe.to_excel(writer, sheet_name=sheet, startrow=0 , startcol=0)
-    writer.save()
+    writer.close()
 
 url = "https://www.vlr.gg/player/matches/3063/mel/?page=4"
 result = requests.get(url)
 id = 3063
-soup = BeautifulSoup(result.content)
+soup = BeautifulSoup(result.content, features="html5lib") 
 games = {}
+tourns = []
 for a in soup.find('div', {'class' : 'mod-dark'}).find_all("a"):
-  #Don't know why this works but it does so :D
+  #This bit is "only a little bit" scuffed 
   text = a.find('div', {'class' : 'text-of'}).get_text()
   j = 0
+  q = False
+  r = ""
   for i, chr in enumerate(list(text)):
-    if chr == "\t":
-      j += 1
-    if j == 7:
-      break 
-  games["https://www.vlr.gg" + a['href']] = a.find('div', {'class' : 'text-of'}).get_text()[6:i-2]
+    if chr != "\t" and chr != "\n":
+      q = True
+      r += chr
+    elif q:
+      break
+  
+  q1 = False
+  r1 = ""
+  for i, chr in enumerate(list(a.find('div', {'class' : 'm-item-date'}).get_text())):
+    if chr != "\t" and chr != "\n":
+      q1 = True
+      r1 += chr
+    elif q1:
+      break
+    
+  r1 = datetime.strptime(r1, '%Y/%m/%d')    
+  
+  if r not in tourns:
+      tourns.append(r)
+  games["https://www.vlr.gg" + a['href']] = [r, r1]
+  
 
-df_dict = {
-   'Tournament' : [], 
-   'Score' : [],
-   'EnemyScore' : [],
-   'Map' : [],
-   'Agent' : [],
-   'Rating' : [],
-   'ACS' : [],
-   "Kills" : [],
-   'Deaths' : [],
-   'Assists' : [],
-   'K+/-' : [],
-   'KAST' : [],
-   'ADR' : [],
-   'HS' : [],
-   'FK' : [],
-   'FD' : [],
-   'FK+/-' : []
-  }
+def main():
+    ok_tourns = []
+    for i, variable in enumerate(variable_names):
+        if variable_list[i].get() == 1:
+            ok_tourns.append(variable)
+            
+    df_dict = {
+    'Tournament' : [], 
+    'Score' : [],
+    'EnemyScore' : [],
+    'Map' : [],
+    'Agent' : [],
+    'Rating' : [],
+    'ACS' : [],
+    "Kills" : [],
+    'Deaths' : [],
+    'Assists' : [],
+    'K+/-' : [],
+    'KAST' : [],
+    'ADR' : [],
+    'HS' : [],
+    'FK' : [],
+    'FD' : [],
+    'FK+/-' : []
+    }
 
-for game in games:
-  df_dict = add_to_dict(game, df_dict, id, games[game])
+    for game in games:
+        if games[game][0] not in ok_tourns:
+            continue
+        df_dict = add_to_dict(game, df_dict, id, games[game][0])
 
-dfs_tabs([pd.DataFrame(df_dict)], ["Main"], "Testing.xlsx")
+        dfs_tabs([pd.DataFrame(df_dict)], ["Main"], "Testing.xlsx")
 
+            
+top = Tk()
+
+top.geometry( "200x200" )
+
+mb=  Menubutton ( top, text="Tournament List", relief=RAISED )
+mb.pack()
+mb.menu  =  Menu ( mb, tearoff = 0 )
+mb["menu"]  =  mb.menu
+
+variable_names = tourns
+variable_list = [IntVar() for name in variable_names]
+
+
+
+for var in variable_list:
+    var.set(1)
+
+
+for i, name in enumerate(variable_names):
+    mb.menu.add_checkbutton(label=name, variable=variable_list[i])
+
+button = Button( top , text = "Start" , command = main ).pack()
+
+mb.pack()
+top.mainloop()
