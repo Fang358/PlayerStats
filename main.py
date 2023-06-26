@@ -71,7 +71,7 @@ def dfs_tabs(df_list, sheet_list, file_name):
         dataframe.to_excel(writer, sheet_name=sheet, startrow=0 , startcol=0)
     writer.close()
 
-url = "https://www.vlr.gg/player/matches/3063/mel/?page=4"
+url = "https://www.vlr.gg/player/matches/604/boostio/?page=1"
 result = requests.get(url)
 id = 3063
 soup = BeautifulSoup(result.content, features="html5lib") 
@@ -112,6 +112,10 @@ def main():
         if variable_list[i].get() == 1:
             ok_tourns.append(variable)
             
+    date = datetime.strptime(cal.get_date(), "%m/%d/%y")
+    
+    top.destroy()
+            
     df_dict = {
     'Tournament' : [], 
     'Score' : [],
@@ -135,14 +139,19 @@ def main():
     for game in games:
         if games[game][0] not in ok_tourns:
             continue
+        
+        if games[game][1] < date:
+            continue
+        
+        
         df_dict = add_to_dict(game, df_dict, id, games[game][0])
 
-        dfs_tabs([pd.DataFrame(df_dict)], ["Main"], "Testing.xlsx")
+        dfs_tabs([pd.DataFrame(df_dict)], ["Main"], "Testing1.xlsx")
 
             
 top = Tk()
 
-top.geometry( "200x200" )
+top.geometry( "300x500" )
 
 mb=  Menubutton ( top, text="Tournament List", relief=RAISED )
 mb.pack()
@@ -160,6 +169,12 @@ for var in variable_list:
 
 for i, name in enumerate(variable_names):
     mb.menu.add_checkbutton(label=name, variable=variable_list[i])
+    
+cal = Calendar(top, selectmode = 'day',
+               year = 2023, month = 6,
+               day = 26)
+ 
+cal.pack(pady = 20)
 
 button = Button( top , text = "Start" , command = main ).pack()
 
