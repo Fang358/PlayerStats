@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import xlsxwriter
 
-def add_to_dict(url, df_dict, id):
+def add_to_dict(url, df_dict, id, tourn):
   result = requests.get(url)
   soup = BeautifulSoup(result.content) 
   games = soup.find('div', {'class' : "vm-stats"}).find_all('div', {'class' : 'vm-stats-game'})
@@ -40,6 +40,7 @@ def add_to_dict(url, df_dict, id):
           stat_value = stat_value[:-1] if stat_value.count("%") > 0 else stat_value
           both_stats.append(float(stat_value))
 
+        df_dict['Tournament'].append(tourn)
         df_dict['Score'].append(score)
         df_dict['EnemyScore'].append(enemy_score)
         df_dict['Map'].append(map)
@@ -71,9 +72,20 @@ url = "https://www.vlr.gg/player/matches/3063/mel/?page=4"
 result = requests.get(url)
 id = 3063
 soup = BeautifulSoup(result.content)
-games = ["https://www.vlr.gg" + a['href'] for a in soup.find('div', {'class' : 'mod-dark'}).find_all("a")]
+games = {}
+for a in soup.find('div', {'class' : 'mod-dark'}).find_all("a"):
+  #Don't know why this works but it does so :D
+  text = a.find('div', {'class' : 'text-of'}).get_text()
+  j = 0
+  for i, chr in enumerate(list(text)):
+    if chr == "\t":
+      j += 1
+    if j == 7:
+      break 
+  games["https://www.vlr.gg" + a['href']] = a.find('div', {'class' : 'text-of'}).get_text()[6:i-2]
 
 df_dict = {
+   'Tournament' : [], 
    'Score' : [],
    'EnemyScore' : [],
    'Map' : [],
@@ -93,7 +105,7 @@ df_dict = {
   }
 
 for game in games:
-  df_dict = add_to_dict(game, df_dict, id)
+  df_dict = add_to_dict(game, df_dict, id, games[game])
 
 dfs_tabs([pd.DataFrame(df_dict)], ["Main"], "Testing.xlsx")
 
