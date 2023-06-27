@@ -42,8 +42,11 @@ def add_to_dict(url, df_dict, id, tourn, agents, maps):
 
           stat_value = int(stat_value[:-1]) / 100 if stat_value.count("%") > 0 else stat_value
           both_stats.append(float(stat_value))
-
+          
+        enemy = soup.find_all("div", {"class" : "team-name"})[enemy].get_text().replace("\n", "").replace("\t", "")
+        
         df_dict['Tournament'].append(tourn)
+        df_dict['Opponent'].append(enemy)
         df_dict['Score'].append(score)
         df_dict['EnemyScore'].append(enemy_score)
         df_dict['Map'].append(map)
@@ -58,6 +61,12 @@ def add_to_dict(url, df_dict, id, tourn, agents, maps):
         df_dict['HS'].append(both_stats[8])
         df_dict['FK'].append(both_stats[9])
         df_dict['FD'].append(both_stats[10])
+        df_dict['KD'].append(both_stats[2] / max(1, both_stats[3]))
+        df_dict['KPR'].append(both_stats[2] / (score + enemy_score))
+        df_dict['APR'].append(both_stats[4] / (score + enemy_score))
+        df_dict['DPR'].append(both_stats[3] / (score + enemy_score))
+        df_dict['FKPR'].append(both_stats[9] / (score + enemy_score))
+        df_dict['FDPR'].append(both_stats[10] / (score + enemy_score))
         
         if agent not in agents.keys():
             agents[agent] = {
@@ -128,8 +137,6 @@ def add_to_dict(url, df_dict, id, tourn, agents, maps):
         print(f"{map} {agent} - {int(both_stats[2])}/{int(both_stats[3])}/{int(both_stats[4])}")
         
     except Exception as e:
-      print(e)
-      a = b
       print(f"Error on {url} going to next")
 
   return df_dict, agents, maps
@@ -194,18 +201,25 @@ def main():
             
     df_dict = {
     'Tournament' : [], 
+    'Opponent' : [],
     'Score' : [],
     'EnemyScore' : [],
     'Map' : [],
     'Agent' : [],
     'Rating' : [],
+    'KD' : [],
     'ACS' : [],
+    'KAST' : [],
+    'ADR' : [],
+    "KPR" : [],
+    "APR" : [],
+    "DPR" : [],
+    "FKPR" : [],
+    "FDPR" : [],
+    'HS' : [],
     "Kills" : [],
     'Deaths' : [],
     'Assists' : [],
-    'KAST' : [],
-    'ADR' : [],
-    'HS' : [],
     'FK' : [],
     'FD' : [],
     }
@@ -224,12 +238,18 @@ def main():
         "Agent" : [],
         "Rating" : [],
         "ACS" : [],
+        "KD" : [],
+        "KAST" : [],
+        "ADR" : [],
+        'KPR' : [],
+        'DPR' : [],
+        'APR' : [],
+        'FKPR' : [],
+        'FDPR' : [],
+        "HS" : [],
         "Kills" : [],
         "Deaths" : [],
         "Assists" : [],
-        "KAST" : [],
-        "ADR" : [],
-        "HS" : [],
         "FK" : [],
         "FD" : [],
         "Maps" : [],
@@ -254,23 +274,36 @@ def main():
         agent_dict["Maps Won"].append(agents[agent]["Maps Won"])
         agent_dict["Rounds"].append(agents[agent]["Rounds"])
         agent_dict["Rounds Won"].append(agents[agent]["Rounds Won"])
+        agent_dict["KD"].append(agents[agent]["Kills"] / agents[agent]["Deaths"])
+        agent_dict["KPR"].append(agents[agent]["Kills"] / agents[agent]["Rounds"])
+        agent_dict["APR"].append(agents[agent]["Deaths"] / agents[agent]["Rounds"])
+        agent_dict["DPR"].append(agents[agent]["Assists"] / agents[agent]["Rounds"])
+        agent_dict["FKPR"].append(agents[agent]["FK"] / agents[agent]["Rounds"])
+        agent_dict["FDPR"].append(agents[agent]["FD"] / agents[agent]["Rounds"])
         
     maps_dict = {
         "Map Name" : [],
         "Rating" : [],
         "ACS" : [],
-        "Kills" : [],
-        "Deaths" : [],
-        "Assists" : [],
+        'KD' : [],
         "KAST" : [],
         "ADR" : [],
+        'KPR' : [],
+        'APR' : [],
+        'DPR' : [],
+        'FKPR' : [],
+        'FDPR' : [],
         "HS" : [],
         "FK" : [],
         "FD" : [],
+        "Kills" : [],
+        "Deaths" : [],
+        "Assists" : [],
         "Maps" : [],
         "Maps Won" : [],
         "Rounds" : [],
-        "Rounds Won" : []
+        "Rounds Won" : [],
+        
     }
     
     for map in maps:
@@ -289,6 +322,12 @@ def main():
         maps_dict["Maps Won"].append(maps[map]["Maps Won"])
         maps_dict["Rounds"].append(maps[map]["Rounds"])
         maps_dict["Rounds Won"].append(maps[map]["Rounds Won"])
+        maps_dict["KD"].append(maps[map]["Kills"] / maps[map]["Deaths"])
+        maps_dict["KPR"].append(maps[map]["Kills"] / maps[map]["Rounds"])
+        maps_dict["APR"].append(maps[map]["Deaths"] / maps[map]["Rounds"])
+        maps_dict["DPR"].append(maps[map]["Assists"] / maps[map]["Rounds"])
+        maps_dict["FKPR"].append(maps[map]["FK"] / maps[map]["Rounds"])
+        maps_dict["FDPR"].append(maps[map]["FD"] / maps[map]["Rounds"])
                 
     file_name = input("File Name: ")
     dfs_tabs([pd.DataFrame(df_dict), pd.DataFrame(agent_dict), pd.DataFrame(maps_dict)], ["Main", "Agents", "Maps"], f"{file_name}.xlsx")
